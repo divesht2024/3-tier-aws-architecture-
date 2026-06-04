@@ -1,108 +1,187 @@
-# 🚀 Basic 3-Tier AWS Architecture on AWS
+# 🏗️ Production-Grade 3-Tier Architecture on AWS
 
-This project demonstrates the design and implementation of a **Basic 3-Tier Architecture on AWS**.
+A production-ready, fault-tolerant 3-tier AWS infrastructure deployed across **2 Availability Zones** with isolated public and private subnets for web, application, and database tiers — following AWS Well-Architected Framework best practices.
 
-The infrastructure separates the application into three different network tiers to improve **security, maintainability, scalability, and performance**.
+---
 
-- **Tier 1 – Presentation Layer:** Amazon EC2 deployed in a Public Subnet  
-- **Tier 2 – Application Layer:** Amazon EC2 deployed in a Private Subnet  
-- **Tier 3 – Database Layer:** Amazon RDS MySQL deployed in a Private Subnet  
+---
 
-This architecture follows cloud best practices by allowing public access only to the frontend server while keeping backend and database resources isolated from direct internet exposure.
+## 🎯 What This Project Demonstrates
+
+- **High Availability** — Infrastructure spread across 2 Availability Zones (us-east-1a, us-east-1b)
+- **Fault Tolerance** — No single point of failure at any tier
+- **Security** — Least-privilege Security Groups, private subnets for app and database tiers
+- **Scalability** — Auto Scaling Groups at web and app tiers
+- **Production Readiness** — Multi-AZ RDS, internal ALB, CloudWatch monitoring
 
 ---
 
 ## ☁️ AWS Services Used
 
-| Service | Purpose |
-|--------|---------|
-| Amazon VPC | Isolated private network |
-| Public Subnet | Hosts internet-facing Frontend EC2 |
-| Private Subnet | Hosts Backend EC2 and RDS |
-| Internet Gateway | Enables internet access |
-| NAT Gateway | Provides outbound internet for private subnet |
-| Route Tables | Controls network traffic |
-| Amazon EC2 | Frontend / Backend servers |
-| Amazon RDS | Managed relational database |
-| Security Groups | Firewall and access control |
+| Service | Tier | Purpose |
+|---------|------|---------|
+| Amazon VPC (10.0.0.0/16) | All | Isolated private network |
+| Internet Gateway | Web | Enables internet access |
+| Application Load Balancer (External) | Web | Routes internet traffic to Web Tier EC2s |
+| Amazon EC2 + ASG | Web | Web servers in public subnets (10.0.1.0/24, 10.0.4.0/24) |
+| Application Load Balancer (Internal) | App | Routes traffic from Web Tier to App Tier |
+| Amazon EC2 + ASG | App | App servers in private subnets (10.0.2.0/24, 10.0.5.0/24) |
+| Amazon RDS (Primary + Read Replica) | DB | MySQL in private subnets (10.0.3.0/24, 10.0.6.0/24) |
+| NAT Gateway | All | Outbound internet for private subnets |
+| Route Tables | All | Controls traffic routing per subnet |
+| Security Groups | All | Stateful firewall per tier |
+| AWS IAM | All | Least-privilege roles per tier |
+| Amazon CloudWatch | All | Monitoring, alarms, dashboards |
+| AWS Auto Scaling | Web + App | Dynamic scaling based on demand |
 
 ---
 
 ## 🔄 Request Flow
 
-```text
-User Browser
-   ↓
-Internet
-   ↓
+```
+Internet Users
+      ↓
 Internet Gateway
-   ↓
-Frontend EC2 (Presentation Layer)
-   ↓
-Backend EC2 (Application Layer)
-   ↓
-Amazon RDS MySQL (Database Layer)
-   ↓
-Response to User
+      ↓
+External ALB (DNS: app.example.com)
+  • Terminates TLS (HTTPS)
+  • Health checks
+  • Routes to Web Tier
+      ↓
+┌─────────────────────────────────┐
+│         Web Tier (Public)       │
+│  EC2 Web Server 1 (AZ1)        │
+│  EC2 Web Server 2 (AZ2)        │
+│  Both in Auto Scaling Group     │
+└─────────────────────────────────┘
+      ↓
+Internal ALB
+  • Internal-facing
+  • Distributes traffic to App Tier
+  • Improves fault tolerance
+      ↓
+┌─────────────────────────────────┐
+│        App Tier (Private)       │
+│  EC2 App Server 1 (AZ1)        │
+│  EC2 App Server 2 (AZ2)        │
+│  Both in Auto Scaling Group     │
+└─────────────────────────────────┘
+      ↓
+┌─────────────────────────────────┐
+│      Database Tier (Private)    │
+│  Amazon Aurora Primary (Writer) │
+│  Amazon Aurora Read Replica     │
+│  Multi-AZ deployment            │
+└─────────────────────────────────┘
+      ↓
+Response back to User
 ```
 
-🔐 Security Architecture
+---
+## 🌐 Network Architecture
 
-✔ Frontend server deployed in Public Subnet
-✔ Backend server deployed in Private Subnet
-✔ Database deployed in Private Subnet
-✔ No direct public access to Backend or RDS
-✔ NAT Gateway used for outbound internet from private subnet
-✔ Security Groups restrict inbound/outbound traffic
-✔ Application and database layers are logically separated
+| Subnet | CIDR | AZ | Tier |
+|--------|------|----|------|
+| Public Subnet 1 | 10.0.1.0/24 | ap-south-1a | Web |
+| Public Subnet 2 | 10.0.4.0/24 | ap-south-1b | Web |
+| Private Subnet 1 | 10.0.2.0/24 | ap-south-1a | App |
+| Private Subnet 2 | 10.0.5.0/24 | ap-south-1b | App |
+| Private Subnet 3 | 10.0.3.0/24 | ap-south-1a | Database |
+| Private Subnet 4 | 10.0.6.0/24 | ap-south-1b | Database |
 
-⚙️ Key Features Implemented
+**Routing:**
+- Public subnets → Internet Gateway (0.0.0.0/0)
+- Private subnets → NAT Gateway (0.0.0.0/0)
 
-Custom Amazon VPC
-Public and Private Subnet Design
-Frontend Web Hosting on EC2
-Backend Application Hosting on EC2
-RDS Database Connectivity
-Secure Network Segmentation
-Internet Gateway Integration
-NAT Gateway Configuration
-Controlled Security Group Rules
+---
 
-📚 Skills Demonstrated
+## 🔐 Security Architecture
 
-AWS Cloud Architecture Design
-Networking Fundamentals (VPC/Subnets)
-Compute Deployment (EC2)
-Multi-Tier Application Deployment
-Database Integration (RDS)
-Security Best Practices
-Troubleshooting & Connectivity
-Cloud Project Documentation
+```
+Internet → External ALB (HTTPS only)
+                ↓
+        Web Tier EC2s
+        (SG: allow 80/443 from ALB only)
+                ↓
+        Internal ALB
+                ↓
+        App Tier EC2s
+        (SG: allow traffic from Web Tier SG only)
+                ↓
+        RDS Database
+        (SG: allow 3306 from App Tier SG only)
+```
 
-📸 Screenshots
+- ✅ No direct public access to App or Database tiers
+- ✅ Security Groups enforce least-privilege per tier
+- ✅ IAM roles assigned per tier — no hardcoded credentials
+- ✅ Data encrypted at rest (AES-256) and in transit (TLS)
+- ✅ NAT Gateway for outbound-only internet from private subnets
 
-Frontend EC2 Running State
-Backend EC2 Running State
-RDS Instance Dashboard
-VPC Configuration
-Route Tables
-NAT Gateway Status
-Security Group Rules
-Frontend Working Output
-Successful Backend Connection
-Successful DB Connection
+---
 
-📂 Repository Structure
+## 📊 High Availability & Fault Tolerance
 
-3-tier-aws-architecture/
-│── frontend/
-│── backend/
-│── database/
-│── screenshots/
-│── architecture/
-│── README.md
+| Component | HA Mechanism |
+|-----------|-------------|
+| Web Tier | ASG across 2 AZs — auto scale-out from 2 to 4 instances |
+| App Tier | ASG across 2 AZs — auto scale-out based on CPU |
+| Database | Aurora Primary (Writer) + Read Replica across 2 AZs |
+| Load Balancing | External ALB + Internal ALB with health checks |
+| Monitoring | CloudWatch alarms on CPU, memory, request metrics with SNS alerts — sub-5-minute detection |
 
+---
 
-👨‍💻 Author
-DIVESH M. TAYADE
-AWS | Cloud Engineer | DevOps Enthusiast
+## ⚙️ Key Features
+
+- **Dual ALB setup** — External ALB for internet traffic, Internal ALB for web-to-app routing
+- **Auto Scaling** — Dynamic scale-out at both web and app tiers based on demand
+- **Multi-AZ RDS** — Aurora Primary (Writer) + Read Replica for read scalability
+- **Encryption** — Data encrypted at rest (AES-256) and in transit (TLS)
+- **Automated backups** — RDS automated backups and cross-region DR capability
+- **CloudWatch monitoring** — Dashboards, alarms, SNS alerts across all tiers
+- **Full-stack deployment** — End-to-end validated with a full-stack web application
+
+---
+
+---
+
+## 📸 Screenshots
+
+| Component | Screenshot |
+|-----------|-----------|
+| VPC Configuration | screenshots/vpc.png |
+| External ALB | screenshots/external-alb.png |
+| Internal ALB | screenshots/internal-alb.png |
+| Web Tier EC2s | screenshots/web-ec2.png |
+| App Tier EC2s | screenshots/app-ec2.png |
+| RDS Primary + Replica | screenshots/rds.png |
+| Auto Scaling Groups | screenshots/asg.png |
+| CloudWatch Dashboard | screenshots/cloudwatch.png |
+| Security Groups | screenshots/security-groups.png |
+| Full-stack App Running | screenshots/app-output.png |
+
+---
+
+## 🏆 Key Achievements
+
+- ✅ Zero single point of failure across all three tiers
+- ✅ Automatic scale-out from 2 to 4 EC2 instances under load
+- ✅ Sub-5-minute issue detection via CloudWatch + SNS alerts
+- ✅ Full-stack web application deployed and validated end-to-end
+- ✅ Production-grade security with least-privilege access per tier
+
+---
+
+## 👨‍💻 Author
+
+**Divesh M. Tayade**
+- 🐙 GitHub: [@divesht2024](https://github.com/divesht2024)
+- 💼 LinkedIn: [linkedin.com/in/divesh-tayade](https://www.linkedin.com/in/divesh-tayade-4a010124a/)
+- 📧 diveshtayade20@gmail.com
+
+---
+
+## 📄 License
+
+This project is open source and available under the [MIT License](LICENSE).

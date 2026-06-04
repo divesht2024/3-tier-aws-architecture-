@@ -1,3 +1,4 @@
+
 # 🏗️ Production-Grade 3-Tier Architecture on AWS
 
 A production-ready, fault-tolerant 3-tier AWS infrastructure deployed across **2 Availability Zones** with isolated public and private subnets for web, application, and database tiers — following AWS Well-Architected Framework best practices.
